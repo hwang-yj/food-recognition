@@ -15,18 +15,14 @@ from flask_ngrok import run_with_ngrok
 from flask_cors import CORS, cross_origin
 from werkzeug.utils import secure_filename
 
-parser = argparse.ArgumentParser('Online Food Recognition')
-parser.add_argument('--ngrok', action='store_true',
-                    default=False, help="Run on local or ngrok")
-parser.add_argument('--host',  type=str,
-                    default='localhost:8000', help="Local IP")
-parser.add_argument('--debug', action='store_true',
-                    default=False, help="Run app in debug mode")
-
 ASSETS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
+app.config["NGROK"] = True
+app.config["HOST"] = "localhost:8000"
+app.config["DEBUG"] = False
+
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 1
@@ -233,63 +229,3 @@ def analyze():
         else:
             error_msg = "Invalid input url!!!"
             return render_template('detect-input-url.html', error_msg=error_msg)
-
-        filename = os.path.basename(output_path)
-        csv_name, _ = os.path.splitext(filename)
-
-        csv_name1 = os.path.join(
-            app.config['CSV_FOLDER'], csv_name + '_info.csv')
-        csv_name2 = os.path.join(
-            app.config['CSV_FOLDER'], csv_name + '_info2.csv')
-
-        if 'url-button' in request.form:
-            return render_template('detect-input-url.html', out_name=out_name, segname=output_path, fname=filename, output_type=output_type, filetype=filetype, csv_name=csv_name1, csv_name2=csv_name2)
-
-        elif 'webcam-button' in request.form:
-            return render_template('detect-webcam-capture.html', out_name=out_name, segname=output_path, fname=filename, output_type=output_type, filetype=filetype, csv_name=csv_name1, csv_name2=csv_name2)
-
-        return render_template('detect-upload-file.html', out_name=out_name, segname=output_path, fname=filename, output_type=output_type, filetype=filetype, csv_name=csv_name1, csv_name2=csv_name2)
-
-    return redirect('/')
-
-
-@app.after_request
-def add_header(response):
-    # Include cookie for every request
-    response.headers.add('Access-Control-Allow-Credentials', True)
-
-    # Prevent the client from caching the response
-    if 'Cache-Control' not in response.headers:
-        response.headers['Cache-Control'] = 'public, no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '-1'
-    return response
-
-
-if __name__ == '__main__':
-    if not os.path.exists(UPLOAD_FOLDER):
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    if not os.path.exists(DETECTION_FOLDER):
-        os.makedirs(DETECTION_FOLDER, exist_ok=True)
-    if not os.path.exists(SEGMENTATION_FOLDER):
-        os.makedirs(SEGMENTATION_FOLDER, exist_ok=True)
-    if not os.path.exists(CSV_FOLDER):
-        os.makedirs(CSV_FOLDER, exist_ok=True)
-    if not os.path.exists(METADATA_FOLDER):
-        os.makedirs(METADATA_FOLDER, exist_ok=True)
-
-    args = parser.parse_args()
-
-    if args.ngrok:
-        run_with_ngrok(app)
-        app.run()
-    else:
-        hostname = str.split(args.host, ':')
-        if len(hostname) == 1:
-            port = 4000
-        else:
-            port = hostname[1]
-        host = hostname[0]
-
-        app.run(host=host, port=port, debug=args.debug, use_reloader=False,
-                ssl_context='adhoc')
